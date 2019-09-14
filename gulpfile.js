@@ -4,7 +4,9 @@ const { src, dest, watch, series, parallel } = require("gulp");
 const concat = require("gulp-concat");
 const uglify = require("gulp-uglify-es").default;
 const cleanCSS = require("gulp-clean-css");
-const livereload = require("gulp-livereload");
+const imageMin = require("gulp-imagemin");
+const browserSync = require("browser-sync").create();
+
 
 //Sökvägar
 const files = {
@@ -18,7 +20,7 @@ const files = {
 function copyHTML() {
     return src(files.htmlPath)
         .pipe(dest("pub"))
-        .pipe(livereload())
+        .pipe(browserSync.stream())
 }
 
 //Task: Kopiera, sammanslå och minifiera js-filer
@@ -27,7 +29,7 @@ function jsTask() {
         .pipe(concat("main.js"))
         .pipe(uglify())
         .pipe(dest("pub/js"))
-        .pipe(livereload())
+        .pipe(browserSync.stream())
 }
 
 //Task: Kopiera, sammanslå och minifiera CSS-filer
@@ -36,32 +38,32 @@ function cssTask() {
         .pipe(concat("stylesheet.css"))
         .pipe(cleanCSS())
         .pipe(dest("pub/css"))
-        .pipe(livereload())
+        .pipe(browserSync.stream())
 }
 
-//Task: Kopiera bilder
-function copyImages() {
+//Task: Kopiera och minifiera bilder
+function imageTask() {
     return src(files.imagePath)
+        .pipe(imageMin())
         .pipe(dest("pub/pics"))
-}
-
-//Task: Live reload
-function liveReload() {
-    livereload.listen();
+        .pipe(browserSync.stream())
 }
 
 //Task: Watcher
 function watchTask() {
-    watch([files.htmlPath, files.jsPath, files.cssPath], 
-        series(
-            parallel(
-                copyHTML, 
-                jsTask, 
-                cssTask,
-                copyImages),
-                liveReload
-        )
-    );
+    browserSync.init({
+        server: {
+            baseDir: 'pub/'
+        }
+    });
+
+    watch([files.htmlPath, files.jsPath, files.cssPath, files.imagePath], 
+        parallel(
+            copyHTML, 
+            jsTask, 
+            cssTask,
+            imageTask),
+    )
 }
 
 exports.default = series(
@@ -69,6 +71,6 @@ exports.default = series(
         copyHTML, 
         jsTask, 
         cssTask,
-        copyImages),
-    watchTask
+        imageTask),
+    watchTask,
 );
